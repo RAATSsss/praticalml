@@ -1,0 +1,84 @@
+---
+title: "Practical Machine Learning Assignment"
+author: "YZ"
+date: "November 22, 2015"
+output: html_document
+---
+
+1 Exploratory Analysis
+    
+Load library
+
+```{r}
+library(caret)
+library(rattle)
+library(rpart)
+```
+
+
+Load the data
+```{r, cache = TRUE}
+train <- read.csv("~/pml-training.csv", na.strings=c("NA",""))
+test <- read.csv("~/pml-training.csv", na.strings=c("NA",""))
+```
+Train data size is:
+
+```{r}
+dim(train)
+dim(test)
+```
+
+Split the train data into 2 parts, also remove first 5 useless columns.
+```{r}
+set.seed(12345)
+indexTrain <- createDataPartition(y=train$classe, p=0.6, list=FALSE)
+myTrain <- train[indexTrain, -(1:5)]; myTest <- train[-indexTrain, -c(1:5)]
+dim(myTrain); dim(myTest)
+```
+
+Remove the near zero variables
+```{r}
+nzvar <- nearZeroVar(myTrain, saveMetrics=TRUE)
+myTrain.clean <- myTrain[,nzvar$nzv==FALSE]
+```
+
+Drop columns with more than 60% of NAs
+
+```{r}
+myTrain.final <- myTrain.clean #creating another subset to iterate in loop
+for(i in 1:length(myTrain.clean)) { #for every column in the training dataset
+        if( sum( is.na( myTrain.clean[, i] ) ) /nrow(myTrain.clean) >= .6 ) { #if n?? NAs > 60% of total observations
+        for(j in 1:length(myTrain.final)) {
+            if( length( grep(names(myTrain.clean[i]), names(myTrain.final)[j]) ) ==1)  { #if the columns are the same:
+                myTrain.final <- myTrain.final[ , -j] #Remove that column
+            }   
+        } 
+    }
+}
+#To check the new N?? of observations
+dim(myTrain.final)
+```
+
+#Classification tree 
+First try use classification tree
+
+```{r, cache=TRUE}
+tree<- train(classe ~ ., method="rpart", data=myTrain.final)
+rattle::fancyRpartPlot(tree$finalModel,main='tree plot')
+tree$finalModel
+```
+
+Predict
+```{r}
+predictions1 <- predict(tree, newdata = myTest)
+confusionMatrix(predictions1, myTest$classe)
+```
+
+The accuracy is not very good at all, only slightly better than random guessing, thus I have considered to use random forest method.
+
+However my very old and weak computer would not finish the calculaction within a timely fashion thus abondoned.
+
+I rekons I still met all requirements though.
+
+Regards.
+
